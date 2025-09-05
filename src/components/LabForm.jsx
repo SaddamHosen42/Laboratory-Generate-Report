@@ -496,6 +496,31 @@ const LabForm = () => {
             )}
           </div>
         )}
+
+        {/* Developer Credits */}
+        <div className="mt-12 text-center border-t pt-8">
+          <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-6 max-w-2xl mx-auto">
+            <div className="text-gray-700">
+              <p className="text-base mb-3">
+                <span className="font-medium">Developed by:</span> 
+                <a 
+                  href="https://saddam-hosen.vercel.app/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 font-semibold ml-2 hover:text-blue-800 hover:underline transition-colors duration-200"
+                >
+                  Saddam Hosen
+                </a>
+              </p>
+              <div className="text-sm text-gray-600 space-y-1">
+                <p> Full Stack Developer | saddamhosen1433@gmail.com</p>
+                <p className="text-xs mt-3 text-gray-500">
+                  © 2025 | Built with React.js & Modern Web Technologies
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
