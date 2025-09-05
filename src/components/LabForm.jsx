@@ -93,13 +93,26 @@ const LabForm = () => {
   };
 
   const handleResultChange = (testId, paramName, value) => {
-    setTestResults(prev => ({
-      ...prev,
-      [testId]: {
-        ...prev[testId],
-        [paramName]: value
-      }
-    }));
+    // For WIDAL test TO and TH, ensure we store the exact numeric value
+    if (testId === 'widal_test' && (paramName === 'S. Typhi - TO' || paramName === 'S. Typhi - TH')) {
+      // Store the exact value as entered, no modifications
+      console.log(`WIDAL Input Debug - ${paramName}: Original="${value}"`);
+      setTestResults(prev => ({
+        ...prev,
+        [testId]: {
+          ...prev[testId],
+          [paramName]: value
+        }
+      }));
+    } else {
+      setTestResults(prev => ({
+        ...prev,
+        [testId]: {
+          ...prev[testId],
+          [paramName]: value
+        }
+      }));
+    }
   };
 
   const generatePatientId = () => {
@@ -117,20 +130,36 @@ const LabForm = () => {
         const test = testOptions.find(test => test.id === testId);
         let results = { ...testResults[testId] || {} };
         
+        // Debug log for WIDAL test
+        if (testId === 'widal_test') {
+          console.log('WIDAL Debug - Original values:', {
+            TO: results['S. Typhi - TO'],
+            TH: results['S. Typhi - TH'],
+            TO_type: typeof results['S. Typhi - TO'],
+            TH_type: typeof results['S. Typhi - TH']
+          });
+        }
+        
         // For WIDAL test, format TO and TH values and add fixed AH and BH
         if (testId === 'widal_test') {
           // Format TO and TH values with 1: prefix (avoid double 1:)
           if (results['S. Typhi - TO']) {
-            const toValue = results['S. Typhi - TO'].toString();
+            const toValue = String(results['S. Typhi - TO']).trim();
             results['S. Typhi - TO'] = toValue.startsWith('1:') ? toValue : `1:${toValue}`;
           }
           if (results['S. Typhi - TH']) {
-            const thValue = results['S. Typhi - TH'].toString();
+            const thValue = String(results['S. Typhi - TH']).trim();
             results['S. Typhi - TH'] = thValue.startsWith('1:') ? thValue : `1:${thValue}`;
           }
           // Add fixed values for AH and BH
           results['S. Para Typhi - AH'] = '1:80';
           results['S. Para Typhi - BH'] = '1:80';
+          
+          // Debug log for WIDAL test
+          console.log('WIDAL Debug - Final formatted values:', {
+            TO: results['S. Typhi - TO'],
+            TH: results['S. Typhi - TH']
+          });
         }
         
         return {
@@ -286,68 +315,9 @@ const LabForm = () => {
               {testOptions.map(test => (
                 <div key={test.id} className="border rounded-lg p-4">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Left side - Input fields (when test is selected) */}
-                    <div className="order-2 lg:order-1">
-                      {selectedTests.includes(test.id) && (
-                        <div className="space-y-3">
-                          <h4 className="text-lg font-medium text-gray-700 mb-4">Enter Results:</h4>
-                          {test.parameters
-                            .filter(param => param.isInput !== false)
-                            .map((param, index) => (
-                            <div key={index} className="space-y-2">
-                              <label className="text-base font-medium text-gray-700">{param.name}:</label>
-                              {test.id === 'widal_test' && (param.name === 'S. Typhi - TO' || param.name === 'S. Typhi - TH') ? (
-                                <div className="flex items-center">
-                                  <span className="text-base font-medium mr-2 bg-gray-100 px-2 py-1 rounded">1:</span>
-                                  <input
-                                    type="number"
-                                    placeholder="Enter number only (e.g., 80, 160)"
-                                    value={testResults[test.id]?.[param.name] || ''}
-                                    onChange={(e) => handleResultChange(test.id, param.name, e.target.value)}
-                                    className="input input-bordered w-full h-10 text-base"
-                                    min="1"
-                                    max="999"
-                                  />
-                                </div>
-                              ) : (
-                                <input
-                                  type="text"
-                                  placeholder={`Enter value (${param.unit})`}
-                                  value={testResults[test.id]?.[param.name] || ''}
-                                  onChange={(e) => handleResultChange(test.id, param.name, e.target.value)}
-                                  className="input input-bordered w-full h-10 text-base"
-                                />
-                              )}
-                              <span className="text-sm text-gray-500">Normal: {param.normalRange}</span>
-                            </div>
-                          ))}
-                          
-                          {/* Show fixed values for WIDAL AH and BH */}
-                          {test.id === 'widal_test' && (
-                            <div className="mt-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
-                              <p className="text-sm font-medium text-blue-800 mb-2">Fixed Values (Auto-added to report):</p>
-                              <div className="space-y-1 text-sm text-blue-700">
-                                <div className="flex justify-between">
-                                  <span>S. Para Typhi - AH:</span>
-                                  <span className="font-medium">1:80</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span>S. Para Typhi - BH:</span>
-                                  <span className="font-medium">1:80</span>
-                                </div>
-                              </div>
-                              <p className="text-xs text-blue-600 mt-2">
-                                💡 Only enter numbers for TO and TH (e.g., 80, 160). The "1:" will be added automatically.
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Right side - Test selection and info */}
-                    <div className="order-1 lg:order-2">
-                      <div className="flex items-center space-x-3 mb-4">
+                    {/* Left side - Test selection only */}
+                    <div className="order-1">
+                      <div className="flex items-center space-x-3">
                         <input
                           type="checkbox"
                           id={test.id}
@@ -359,23 +329,154 @@ const LabForm = () => {
                           {test.name}
                         </label>
                       </div>
-                      
-                      {/* Show test parameters info */}
-                      <div className="text-sm text-gray-600">
-                        <p className="font-medium mb-2">Test Parameters:</p>
-                        <ul className="space-y-1">
-                          {test.parameters.map((param, index) => (
-                            <li key={index} className="flex justify-between">
-                              <span className={param.isInput === false ? 'text-gray-400' : ''}>
-                                {param.name}
-                              </span>
-                              <span className={`${param.isInput === false ? 'text-gray-400' : 'text-blue-600'}`}>
-                                {param.isInput === false ? 'Fixed: 1:80' : `(${param.unit})`}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                    </div>
+                    
+                    {/* Right side - Input fields in single row (when test is selected) */}
+                    <div className="order-2">
+                      {selectedTests.includes(test.id) && (
+                        <div>
+                          <h4 className="text-lg font-medium text-gray-700 mb-4">Enter Results:</h4>
+                          
+                          {/* Blood Grouping Special Layout - Single Row */}
+                          {test.id === 'blood_grouping' ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* ABO Blood Group - Dropdown Input */}
+                              <div>
+                                <label className="text-sm font-medium text-gray-700 block mb-1">Blood Grouping (ABO):</label>
+                                <select
+                                  value={testResults[test.id]?.['Blood Grouping (ABO)'] || ''}
+                                  onChange={(e) => handleResultChange(test.id, 'Blood Grouping (ABO)', e.target.value)}
+                                  className="select select-bordered w-full h-10 text-sm"
+                                >
+                                  <option value="">Select</option>
+                                  <option value="A">A</option>
+                                  <option value="B">B</option>
+                                  <option value="AB">AB</option>
+                                  <option value="O">O</option>
+                                </select>
+                              </div>
+                              
+                              {/* Rh Factor - Radio Buttons */}
+                              <div>
+                                <label className="text-sm font-medium text-gray-700 block mb-1">Rh Factor:</label>
+                                <div className="flex gap-3 mt-1">
+                                  <label className="flex items-center cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      name={`rh-factor-${test.id}`}
+                                      value="Positive"
+                                      checked={testResults[test.id]?.['Rh- Factor (Anti-D)'] === 'Positive'}
+                                      onChange={(e) => handleResultChange(test.id, 'Rh- Factor (Anti-D)', e.target.value)}
+                                      className="radio radio-primary radio-sm mr-2"
+                                    />
+                                    <span className="text-sm">Positive</span>
+                                  </label>
+                                  <label className="flex items-center cursor-pointer">
+                                    <input
+                                      type="radio"
+                                      name={`rh-factor-${test.id}`}
+                                      value="Negative"
+                                      checked={testResults[test.id]?.['Rh- Factor (Anti-D)'] === 'Negative'}
+                                      onChange={(e) => handleResultChange(test.id, 'Rh- Factor (Anti-D)', e.target.value)}
+                                      className="radio radio-primary radio-sm mr-2"
+                                    />
+                                    <span className="text-sm">Negative</span>
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+                          ) : test.id === 'widal_test' ? (
+                            /* WIDAL Test - Single Row */
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <label className="text-sm font-medium text-gray-700 block mb-1">S. Typhi - TO:</label>
+                                <div className="flex items-center">
+                                  <span className="text-sm font-medium mr-2 bg-gray-100 px-2 py-1 rounded">1:</span>
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    placeholder="80"
+                                    value={testResults[test.id]?.['S. Typhi - TO'] || ''}
+                                    onChange={(e) => {
+                                      const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                                      handleResultChange(test.id, 'S. Typhi - TO', numericValue);
+                                    }}
+                                    className="input input-bordered w-full h-8 text-sm"
+                                    maxLength="3"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium text-gray-700 block mb-1">S. Typhi - TH:</label>
+                                <div className="flex items-center">
+                                  <span className="text-sm font-medium mr-2 bg-gray-100 px-2 py-1 rounded">1:</span>
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    placeholder="80"
+                                    value={testResults[test.id]?.['S. Typhi - TH'] || ''}
+                                    onChange={(e) => {
+                                      const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                                      handleResultChange(test.id, 'S. Typhi - TH', numericValue);
+                                    }}
+                                    className="input input-bordered w-full h-8 text-sm"
+                                    maxLength="3"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ) : test.id === 'crp_test' ? (
+                            /* CRP Test - Single Row */
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 block mb-2">CRP (C-Reactive Protein):</label>
+                              <div className="flex gap-4">
+                                <label className="flex items-center cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name={`crp-${test.id}`}
+                                    value="<6 mg/dl"
+                                    checked={testResults[test.id]?.['CRP (C-Reactive Protein)'] === '<6 mg/dl'}
+                                    onChange={(e) => handleResultChange(test.id, 'CRP (C-Reactive Protein)', e.target.value)}
+                                    className="radio radio-primary radio-sm mr-2"
+                                  />
+                                  <span className="text-sm">&lt;6 mg/dl</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name={`crp-${test.id}`}
+                                    value="<12 mg/dl"
+                                    checked={testResults[test.id]?.['CRP (C-Reactive Protein)'] === '<12 mg/dl'}
+                                    onChange={(e) => handleResultChange(test.id, 'CRP (C-Reactive Protein)', e.target.value)}
+                                    className="radio radio-primary radio-sm mr-2"
+                                  />
+                                  <span className="text-sm">&lt;12 mg/dl</span>
+                                </label>
+                              </div>
+                            </div>
+                          ) : (
+                            /* Other Tests - Single Row */
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {test.parameters
+                                .filter(param => param.isInput !== false)
+                                .map((param, index) => (
+                                <div key={index}>
+                                  <label className="text-sm font-medium text-gray-700 block mb-1">{param.name}:</label>
+                                  <input
+                                    type="text"
+                                    placeholder={`Enter value`}
+                                    value={testResults[test.id]?.[param.name] || ''}
+                                    onChange={(e) => handleResultChange(test.id, param.name, e.target.value)}
+                                    className="input input-bordered w-full h-8 text-sm"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
