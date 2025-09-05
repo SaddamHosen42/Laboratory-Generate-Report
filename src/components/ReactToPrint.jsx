@@ -5,17 +5,17 @@ import { useReactToPrint } from "react-to-print";
 const ReactToPrint = () => {
   const contentRef = useRef();
   const location = useLocation();
-  const { patientInfo, selectedTest, testResults, completedTests, isMultipleTests } = location.state || {};
-
-  // Handle both single and multiple test scenarios
-  const testsToDisplay = isMultipleTests ? completedTests : (selectedTest ? [{ test: selectedTest, results: testResults }] : []);
+  
+  // Handle the new data structure from LabForm
+  const { patientInfo, selectedTests, isMultipleTests } = location.state || {};
+  
+  // Convert selectedTests array to the format expected by the component
+  const testsToDisplay = selectedTests || [];
   
   // Debug logging
   console.log('ReactToPrint Debug:', {
     patientInfo,
-    selectedTest,
-    testResults,
-    completedTests,
+    selectedTests,
     isMultipleTests,
     testsToDisplay
   });
@@ -336,9 +336,7 @@ const ReactToPrint = () => {
           <Link to="/" state={{ 
             editMode: true, 
             patientInfo, 
-            selectedTest: isMultipleTests ? null : selectedTest, 
-            testResults: isMultipleTests ? null : testResults,
-            completedTests: isMultipleTests ? completedTests : null
+            selectedTests
           }}>
             <button className="btn btn-warning w-full">✏️ Edit Report</button>
           </Link>

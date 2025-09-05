@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router';
-import TestResultForm from './TestResultForm';
 
 const LabForm = () => {
   const navigate = useNavigate();
@@ -16,10 +15,9 @@ const LabForm = () => {
     gender: '',
     patientId: ''
   });
-  const [selectedTest, setSelectedTest] = useState('');
-  const [multipleMode, setMultipleMode] = useState(false);
-  const [completedTests, setCompletedTests] = useState([]);
-  const [showAddMore, setShowAddMore] = useState(false);
+  
+  const [selectedTests, setSelectedTests] = useState([]);
+  const [testResults, setTestResults] = useState({});
 
   // Pre-fill data if in edit mode
   useEffect(() => {
@@ -31,16 +29,17 @@ const LabForm = () => {
         patientId: ''
       });
       
-      // Handle single test edit mode
-      if (editData.selectedTest) {
-        setSelectedTest(editData.selectedTest?.id || '');
-      }
-      
-      // Handle multiple tests edit mode
-      if (editData.completedTests) {
-        setCompletedTests(editData.completedTests);
-        setMultipleMode(true);
-        setShowAddMore(true);
+      if (editData.selectedTests) {
+        // Extract test IDs and results from the selectedTests array
+        const testIds = editData.selectedTests.map(item => item.test.id);
+        const results = {};
+        
+        editData.selectedTests.forEach(item => {
+          results[item.test.id] = item.results;
+        });
+        
+        setSelectedTests(testIds);
+        setTestResults(results);
       }
     }
   }, [isEditMode, editData]);
@@ -53,23 +52,23 @@ const LabForm = () => {
       parameters: [
         { name: 'S. Typhi - TO', normalRange: 'Less Than 1:80', unit: 'Ratio', isInput: true },
         { name: 'S. Typhi - TH', normalRange: 'Less Than 1:80', unit: 'Ratio', isInput: true },
-        { name: 'S. Para Typhi - AH', normalRange: 'Less Than 1:80', unit: 'Ratio', isInput: false },
-        { name: 'S. Para Typhi - BH', normalRange: 'Less Than 1:80', unit: 'Ratio', isInput: false }
+        { name: 'S. Para Typhi - AH', normalRange: 'Less Than 1:80', unit: 'Ratio', isInput: false, fixedValue: '1:80' },
+        { name: 'S. Para Typhi - BH', normalRange: 'Less Than 1:80', unit: 'Ratio', isInput: false, fixedValue: '1:80' }
       ]
     },
     {
       id: 'blood_grouping',
       name: 'Blood Grouping',
       parameters: [
-        { name: 'Blood Grouping (ABO)', normalRange: 'A, B, AB, O', unit: 'Type', isInput: true },
-        { name: 'Rh- Factor (Anti-D)', normalRange: 'Positive/Negative', unit: 'Type', isInput: true }
+        { name: 'Blood Grouping (ABO)', normalRange: 'A, B, AB, O', unit: 'Type' },
+        { name: 'Rh- Factor (Anti-D)', normalRange: 'Positive/Negative', unit: 'Type' }
       ]
     },
     {
       id: 'crp_test',
       name: 'CRP',
       parameters: [
-        { name: 'CRP (C-Reactive Protein)', normalRange: 'Less than 6 mg/dl', unit: 'mg/dl', isInput: true }
+        { name: 'CRP (C-Reactive Protein)', normalRange: 'Less than 6 mg/dl', unit: 'mg/dl' }
       ]
     }
   ];
@@ -81,8 +80,26 @@ const LabForm = () => {
     });
   };
 
-  const handleTestSelection = (e) => {
-    setSelectedTest(e.target.value);
+  const handleTestSelection = (testId) => {
+    if (selectedTests.includes(testId)) {
+      setSelectedTests(selectedTests.filter(id => id !== testId));
+      // Remove test results for deselected test
+      const newResults = { ...testResults };
+      delete newResults[testId];
+      setTestResults(newResults);
+    } else {
+      setSelectedTests([...selectedTests, testId]);
+    }
+  };
+
+  const handleResultChange = (testId, paramName, value) => {
+    setTestResults(prev => ({
+      ...prev,
+      [testId]: {
+        ...prev[testId],
+        [paramName]: value
+      }
+    }));
   };
 
   const generatePatientId = () => {
@@ -93,55 +110,45 @@ const LabForm = () => {
     });
   };
 
-  const handleSubmitResults = (results) => {
-    const testData = {
-      test: testOptions.find(test => test.id === selectedTest),
-      results: results,
-      timestamp: new Date().toISOString()
+  const handleGenerateReport = () => {
+    const reportData = {
+      patientInfo,
+      selectedTests: selectedTests.map(testId => {
+        const test = testOptions.find(test => test.id === testId);
+        let results = { ...testResults[testId] || {} };
+        
+        // For WIDAL test, format TO and TH values and add fixed AH and BH
+        if (testId === 'widal_test') {
+          // Format TO and TH values with 1: prefix (avoid double 1:)
+          if (results['S. Typhi - TO']) {
+            const toValue = results['S. Typhi - TO'].toString();
+            results['S. Typhi - TO'] = toValue.startsWith('1:') ? toValue : `1:${toValue}`;
+          }
+          if (results['S. Typhi - TH']) {
+            const thValue = results['S. Typhi - TH'].toString();
+            results['S. Typhi - TH'] = thValue.startsWith('1:') ? thValue : `1:${thValue}`;
+          }
+          // Add fixed values for AH and BH
+          results['S. Para Typhi - AH'] = '1:80';
+          results['S. Para Typhi - BH'] = '1:80';
+        }
+        
+        return {
+          test: test,
+          results: results
+        };
+      }),
+      isMultipleTests: selectedTests.length > 1
     };
 
-    if (!multipleMode) {
-      // Single test - go to print immediately with correct format
-      navigate('/print-report', { 
-        state: { 
-          patientInfo, 
-          selectedTest: testData.test,
-          testResults: testData.results,
-          isMultipleTests: false
-        } 
-      });
-    } else {
-      // Multiple tests mode
-      const newCompletedTests = [...completedTests, testData];
-      setCompletedTests(newCompletedTests);
-      setSelectedTest('');
-      setShowAddMore(true);
-    }
-  };
-
-  const handleAddMoreTests = () => {
-    setShowAddMore(false);
-  };
-
-  const handleFinishAllTests = () => {
-    navigate('/print-report', { 
-      state: { 
-        patientInfo, 
-        completedTests: completedTests,
-        isMultipleTests: completedTests.length > 1
-      } 
-    });
-  };
-
-  const handleStartMultipleMode = () => {
-    setMultipleMode(true);
+    navigate('/print-report', { state: reportData });
   };
 
   // Check if patient info is complete
   const isPatientInfoComplete = patientInfo.name && patientInfo.age && patientInfo.gender;
   
-  // Check if test is selected
-  const isTestSelected = selectedTest !== '';
+  // Check if at least one test is selected
+  const hasSelectedTests = selectedTests.length > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 py-8">
@@ -182,31 +189,6 @@ const LabForm = () => {
               Banaripara, Barishal
             </p>
             
-            {/* Process Steps */}
-            <div className="bg-black bg-opacity-70 rounded-xl p-4 backdrop-blur-sm">
-              <div className="flex flex-wrap justify-center items-center gap-4 text-white">
-                <div className="flex items-center gap-2">
-                  <span className="bg-white bg-opacity-20 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold text-black">1</span>
-                  <span className="text-lg">Patient Info</span>
-                </div>
-                <div className="text-blue-200">→</div>
-                <div className="flex items-center gap-2">
-                  <span className="bg-white bg-opacity-20 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold text-black">2</span>
-                  <span className="text-lg">Select Test</span>
-                </div>
-                <div className="text-blue-200">→</div>
-                <div className="flex items-center gap-2">
-                  <span className="bg-white bg-opacity-20 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold text-black">3</span>
-                  <span className="text-lg">Enter Results</span>
-                </div>
-                <div className="text-blue-200">→</div>
-                <div className="flex items-center gap-2">
-                  <span className="bg-white bg-opacity-20 rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold text-black">4</span>
-                  <span className="text-lg">Generate Report</span>
-                </div>
-              </div>
-            </div>
-            
             {isEditMode && (
               <div className="mt-4 text-center">
                 <div className="inline-flex items-center gap-2 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-full font-medium text-lg shadow-lg">
@@ -219,7 +201,7 @@ const LabForm = () => {
         </div>
 
         {/* Patient Information */}
-        <div className="bg-white rounded-lg p-8 mb-8">
+        <div className="bg-white rounded-lg p-8 mb-8 shadow-lg">
           <h2 className="text-3xl font-semibold mb-6 text-gray-800">Patient Information</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="form-control">
@@ -295,145 +277,123 @@ const LabForm = () => {
           </div>
         </div>
 
-        {/* Test Selection - Auto appears when patient info is complete */}
+        {/* Test Selection with Radio Buttons */}
         {isPatientInfoComplete && (
-          <div className="bg-white rounded-lg p-8 mb-8">
-            <h2 className="text-3xl font-semibold mb-6 text-gray-800">Select Test</h2>
+          <div className="bg-white rounded-lg p-8 mb-8 shadow-lg">
+            <h2 className="text-3xl font-semibold mb-6 text-gray-800">Select Tests</h2>
             
-            {/* Multiple Test Mode Toggle */}
-            {completedTests.length === 0 && !multipleMode && (
-              <div className="mb-6 p-6 bg-yellow-50 rounded-lg">
-                <p className="text-xl mb-4">Choose test mode for this patient:</p>
-                <div className="flex gap-6">
-                  <button 
-                    onClick={handleStartMultipleMode}
-                    className="btn btn-primary text-xl h-14 px-6"
-                  >
-                    📋 Multiple Tests
-                  </button>
-                  <span className="text-gray-500 flex items-center text-xl">or</span>
-                  <span className="text-blue-600 font-medium flex items-center text-xl">📄 Single Test (select below)</span>
-                </div>
-              </div>
-            )}
-
-            {/* Single Test Mode Option */}
-            {(multipleMode || completedTests.length > 0) && (
-              <div className="mb-6 p-6 bg-blue-50 rounded-lg">
-                <p className="text-xl mb-4">Currently in: {multipleMode ? '📋 Multiple Tests Mode' : '📄 Single Test Mode'}</p>
-                <div className="flex gap-6">
-                  {multipleMode && (
-                    <button 
-                      onClick={() => {
-                        setMultipleMode(false);
-                        setCompletedTests([]);
-                        setShowAddMore(false);
-                        setSelectedTest('');
-                      }}
-                      className="btn btn-outline btn-primary text-xl h-14 px-6"
-                    >
-                      📄 Switch to Single Test
-                    </button>
-                  )}
-                  {!multipleMode && completedTests.length === 0 && (
-                    <button 
-                      onClick={handleStartMultipleMode}
-                      className="btn btn-outline btn-primary text-xl h-14 px-6"
-                    >
-                      📋 Switch to Multiple Tests
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Show completed tests */}
-            {completedTests.length > 0 && (
-              <div className="mb-4 p-4 bg-green-50 rounded-lg">
-                <h3 className="font-medium text-green-800 mb-2 text-lg">Completed Tests:</h3>
-                <div className="space-y-2">
-                  {completedTests.map((testData, index) => (
-                    <div key={index} className="flex justify-between items-center bg-white p-2 rounded">
-                      <span className="font-medium">{testData.test.name}</span>
-                      <span className="text-green-600">✓ Completed</span>
+            <div className="space-y-4">
+              {testOptions.map(test => (
+                <div key={test.id} className="border rounded-lg p-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left side - Input fields (when test is selected) */}
+                    <div className="order-2 lg:order-1">
+                      {selectedTests.includes(test.id) && (
+                        <div className="space-y-3">
+                          <h4 className="text-lg font-medium text-gray-700 mb-4">Enter Results:</h4>
+                          {test.parameters
+                            .filter(param => param.isInput !== false)
+                            .map((param, index) => (
+                            <div key={index} className="space-y-2">
+                              <label className="text-base font-medium text-gray-700">{param.name}:</label>
+                              {test.id === 'widal_test' && (param.name === 'S. Typhi - TO' || param.name === 'S. Typhi - TH') ? (
+                                <div className="flex items-center">
+                                  <span className="text-base font-medium mr-2 bg-gray-100 px-2 py-1 rounded">1:</span>
+                                  <input
+                                    type="number"
+                                    placeholder="Enter number only (e.g., 80, 160)"
+                                    value={testResults[test.id]?.[param.name] || ''}
+                                    onChange={(e) => handleResultChange(test.id, param.name, e.target.value)}
+                                    className="input input-bordered w-full h-10 text-base"
+                                    min="1"
+                                    max="999"
+                                  />
+                                </div>
+                              ) : (
+                                <input
+                                  type="text"
+                                  placeholder={`Enter value (${param.unit})`}
+                                  value={testResults[test.id]?.[param.name] || ''}
+                                  onChange={(e) => handleResultChange(test.id, param.name, e.target.value)}
+                                  className="input input-bordered w-full h-10 text-base"
+                                />
+                              )}
+                              <span className="text-sm text-gray-500">Normal: {param.normalRange}</span>
+                            </div>
+                          ))}
+                          
+                          {/* Show fixed values for WIDAL AH and BH */}
+                          {test.id === 'widal_test' && (
+                            <div className="mt-4 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                              <p className="text-sm font-medium text-blue-800 mb-2">Fixed Values (Auto-added to report):</p>
+                              <div className="space-y-1 text-sm text-blue-700">
+                                <div className="flex justify-between">
+                                  <span>S. Para Typhi - AH:</span>
+                                  <span className="font-medium">1:80</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span>S. Para Typhi - BH:</span>
+                                  <span className="font-medium">1:80</span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-blue-600 mt-2">
+                                💡 Only enter numbers for TO and TH (e.g., 80, 160). The "1:" will be added automatically.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  ))}
+                    
+                    {/* Right side - Test selection and info */}
+                    <div className="order-1 lg:order-2">
+                      <div className="flex items-center space-x-3 mb-4">
+                        <input
+                          type="checkbox"
+                          id={test.id}
+                          checked={selectedTests.includes(test.id)}
+                          onChange={() => handleTestSelection(test.id)}
+                          className="w-5 h-5 text-blue-600"
+                        />
+                        <label htmlFor={test.id} className="text-xl font-medium cursor-pointer">
+                          {test.name}
+                        </label>
+                      </div>
+                      
+                      {/* Show test parameters info */}
+                      <div className="text-sm text-gray-600">
+                        <p className="font-medium mb-2">Test Parameters:</p>
+                        <ul className="space-y-1">
+                          {test.parameters.map((param, index) => (
+                            <li key={index} className="flex justify-between">
+                              <span className={param.isInput === false ? 'text-gray-400' : ''}>
+                                {param.name}
+                              </span>
+                              <span className={`${param.isInput === false ? 'text-gray-400' : 'text-blue-600'}`}>
+                                {param.isInput === false ? 'Fixed: 1:80' : `(${param.unit})`}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Show add more or finish options */}
-            {showAddMore && (
-              <div className="mb-4 p-4 bg-blue-50 rounded-lg">
-                <p className="text-lg mb-3">Test completed! What would you like to do?</p>
-                <div className="flex gap-4">
-                  <button 
-                    onClick={handleAddMoreTests}
-                    className="btn btn-primary"
-                  >
-                    Add Another Test
-                  </button>
-                  <button 
-                    onClick={handleFinishAllTests}
-                    className="btn btn-success"
-                  >
-                    Generate Report ({completedTests.length} test{completedTests.length > 1 ? 's' : ''})
-                  </button>
-                </div>
-              </div>
-            )}
+              ))}
+            </div>
             
-            {/* Test selection dropdown */}
-            {!showAddMore && (
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text font-medium text-xl">
-                    Choose Test Type * 
-                    {multipleMode && completedTests.length > 0 && ` (Test ${completedTests.length + 1})`}
-                    {!multipleMode && <span className="text-blue-600 ml-2">📄 Single Test Mode</span>}
-                  </span>
-                </label>
-                <select
-                  value={selectedTest}
-                  onChange={handleTestSelection}
-                  className="select select-bordered w-full text-xl h-14"
-                  required
+            {/* Generate Report Button */}
+            {hasSelectedTests && (
+              <div className="mt-8 text-center">
+                <button
+                  onClick={handleGenerateReport}
+                  className="btn btn-primary btn-lg text-xl px-8"
                 >
-                  <option value="">Select a test</option>
-                  {testOptions.filter(test => !completedTests.find(completed => completed.test.id === test.id)).map(test => (
-                    <option key={test.id} value={test.id}>
-                      {test.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {selectedTest && !showAddMore && (
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <h3 className="font-medium text-blue-800 mb-2 text-lg">
-                  {testOptions.find(test => test.id === selectedTest)?.name} Parameters:
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-base">
-                  {testOptions.find(test => test.id === selectedTest)?.parameters.map((param, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span className="font-medium">{param.name}:</span>
-                      <span className="text-blue-600">{param.normalRange}</span>
-                    </div>
-                  ))}
-                </div>
+                  🎯 Generate Report ({selectedTests.length} test{selectedTests.length > 1 ? 's' : ''})
+                </button>
               </div>
             )}
           </div>
-        )}
-
-        {/* Test Results - Auto appears when test is selected */}
-        {isPatientInfoComplete && isTestSelected && !showAddMore && (
-          <TestResultForm
-            test={testOptions.find(test => test.id === selectedTest)}
-            onSubmit={handleSubmitResults}
-            existingResults={isEditMode ? editData?.testResults : null}
-          />
         )}
       </div>
     </div>
