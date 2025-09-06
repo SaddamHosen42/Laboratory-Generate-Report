@@ -240,13 +240,13 @@ const ReactToPrint = () => {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="bg-gray-100">
-                          <th className="border border-black px-4 py-3 text-left font-bold w-2/5">
+                          <th className="border border-black px-4 py-3 text-left font-bold w-1/3">
                             NAME OF TEST
                           </th>
-                          <th className="border border-black px-4 py-3 text-center font-bold w-1/5">
+                          <th className="border border-black px-4 py-3 text-center font-bold w-1/3">
                             RESULT
                           </th>
-                          <th className="border border-black px-4 py-3 text-center font-bold w-2/5">
+                          <th className="border border-black px-4 py-3 text-center font-bold w-1/3">
                             NORMAL RANGE
                           </th>
                         </tr>
@@ -272,13 +272,13 @@ const ReactToPrint = () => {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="bg-gray-100">
-                          <th className="border border-black px-4 py-3 text-left font-bold w-2/5">
+                          <th className="border border-black px-4 py-3 text-left font-bold w-1/3">
                             NAME OF TEST
                           </th>
-                          <th className="border border-black px-4 py-3 text-center font-bold w-1/5">
+                          <th className="border border-black px-4 py-3 text-center font-bold w-1/3">
                             RESULT
                           </th>
-                          <th className="border border-black px-4 py-3 text-center font-bold w-2/5">
+                          <th className="border border-black px-4 py-3 text-center font-bold w-1/3">
                             NORMAL RANGE
                           </th>
                         </tr>

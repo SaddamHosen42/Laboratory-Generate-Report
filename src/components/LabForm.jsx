@@ -77,6 +77,15 @@ const LabForm = () => {
       parameters: [
         { name: 'DENGUE NS1 (ICT)', normalRange: 'Negative', unit: 'Result' }
       ]
+    },
+    {
+      id: 'serum_electrolyte',
+      name: 'SERUM ELECTROLYTE',
+      parameters: [
+        { name: 'Sodium (Na+)', normalRange: '135-148 mmol/l', unit: 'mmol/l' },
+        { name: 'Potassium (K+)', normalRange: '3.5-5.3 mmol/l', unit: 'mmol/l' },
+        { name: 'Chlorine (Cl-)', normalRange: '98-107 mmol/l', unit: 'mmol/l' }
+      ]
     }
   ];
 
@@ -166,6 +175,18 @@ const LabForm = () => {
           console.log('WIDAL Debug - Final formatted values:', {
             TO: results['S. Typhi - TO'],
             TH: results['S. Typhi - TH']
+          });
+        }
+        
+        // For SERUM ELECTROLYTE test, add mmol/l unit to numeric values
+        if (testId === 'serum_electrolyte') {
+          Object.keys(results).forEach(key => {
+            if (results[key] && results[key].trim()) {
+              // Only add unit if it's not already there
+              if (!results[key].includes('mmol/l')) {
+                results[key] = `${results[key]} mmol/l`;
+              }
+            }
           });
         }
         
@@ -493,20 +514,43 @@ const LabForm = () => {
                               </div>
                             </div>
                           ) : (
-                            /* Other Tests - Single Row */
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            /* Other Tests - Single Row (including Serum Electrolyte) */
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                               {test.parameters
                                 .filter(param => param.isInput !== false)
                                 .map((param, index) => (
                                 <div key={index}>
-                                  <label className="text-sm font-medium text-gray-700 block mb-1">{param.name}:</label>
-                                  <input
-                                    type="text"
-                                    placeholder={`Enter value`}
-                                    value={testResults[test.id]?.[param.name] || ''}
-                                    onChange={(e) => handleResultChange(test.id, param.name, e.target.value)}
-                                    className="input input-bordered w-full h-8 text-sm"
-                                  />
+                                  <label className="text-sm font-medium text-gray-700 block mb-1">
+                                    {param.name}:
+                                    {param.unit && (
+                                      <span className="text-xs text-gray-500 ml-1">({param.unit})</span>
+                                    )}
+                                  </label>
+                                  {test.id === 'serum_electrolyte' ? (
+                                    <input
+                                      type="text"
+                                      inputMode="decimal"
+                                      placeholder={param.name.includes('Sodium') ? '135.73' : param.name.includes('Potassium') ? '4.03' : '100.0'}
+                                      value={testResults[test.id]?.[param.name] || ''}
+                                      onChange={(e) => {
+                                        // Allow only numbers and decimal point
+                                        const numericValue = e.target.value.replace(/[^0-9.]/g, '');
+                                        handleResultChange(test.id, param.name, numericValue);
+                                      }}
+                                      className="input input-bordered w-full h-8 text-sm"
+                                    />
+                                  ) : (
+                                    <input
+                                      type="text"
+                                      placeholder={`Enter value${param.unit ? ` (${param.unit})` : ''}`}
+                                      value={testResults[test.id]?.[param.name] || ''}
+                                      onChange={(e) => handleResultChange(test.id, param.name, e.target.value)}
+                                      className="input input-bordered w-full h-8 text-sm"
+                                    />
+                                  )}
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    Normal: {param.normalRange}
+                                  </div>
                                 </div>
                               ))}
                             </div>
