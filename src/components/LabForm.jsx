@@ -86,6 +86,13 @@ const LabForm = () => {
         { name: 'Potassium (K+)', normalRange: '3.5-5.3 mmol/l', unit: 'mmol/l' },
         { name: 'Chlorine (Cl-)', normalRange: '98-107 mmol/l', unit: 'mmol/l' }
       ]
+    },
+    {
+      id: 'fbs_test',
+      name: 'F.B.S',
+      parameters: [
+        { name: 'Fasting Blood Sugar (F.B.S)', normalRange: '3.88-6.8 m.mol/L', unit: 'm.mol/L' }
+      ]
     }
   ];
 
@@ -185,6 +192,18 @@ const LabForm = () => {
               // Only add unit if it's not already there
               if (!results[key].includes('mmol/l')) {
                 results[key] = `${results[key]} mmol/l`;
+              }
+            }
+          });
+        }
+        
+        // For F.B.S test, add m.mol/L unit to numeric values
+        if (testId === 'fbs_test') {
+          Object.keys(results).forEach(key => {
+            if (results[key] && results[key].trim()) {
+              // Only add unit if it's not already there
+              if (!results[key].includes('m.mol/L')) {
+                results[key] = `${results[key]} m.mol/L`;
               }
             }
           });
@@ -531,6 +550,19 @@ const LabForm = () => {
                                       type="text"
                                       inputMode="decimal"
                                       placeholder={param.name.includes('Sodium') ? '135.73' : param.name.includes('Potassium') ? '4.03' : '100.0'}
+                                      value={testResults[test.id]?.[param.name] || ''}
+                                      onChange={(e) => {
+                                        // Allow only numbers and decimal point
+                                        const numericValue = e.target.value.replace(/[^0-9.]/g, '');
+                                        handleResultChange(test.id, param.name, numericValue);
+                                      }}
+                                      className="input input-bordered w-full h-8 text-sm"
+                                    />
+                                  ) : test.id === 'fbs_test' ? (
+                                    <input
+                                      type="text"
+                                      inputMode="decimal"
+                                      placeholder="12.8"
                                       value={testResults[test.id]?.[param.name] || ''}
                                       onChange={(e) => {
                                         // Allow only numbers and decimal point
