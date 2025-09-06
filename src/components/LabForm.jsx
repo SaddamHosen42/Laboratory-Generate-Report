@@ -70,6 +70,13 @@ const LabForm = () => {
       parameters: [
         { name: 'CRP (C-Reactive Protein)', normalRange: 'Less than 6 mg/dl', unit: 'mg/dl' }
       ]
+    },
+    {
+      id: 'dengue_test',
+      name: 'DENGUE',
+      parameters: [
+        { name: 'DENGUE NS1 (ICT)', normalRange: 'Negative', unit: 'Result' }
+      ]
     }
   ];
 
@@ -456,6 +463,35 @@ const LabForm = () => {
                                 </label>
                               </div>
                             </div>
+                          ) : test.id === 'dengue_test' ? (
+                            /* Dengue Test - Single Row */
+                            <div>
+                              <label className="text-sm font-medium text-gray-700 block mb-2">DENGUE NS1 (ICT):</label>
+                              <div className="flex gap-4">
+                                <label className="flex items-center cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name={`dengue-${test.id}`}
+                                    value="Negative (-ve)"
+                                    checked={testResults[test.id]?.['DENGUE NS1 (ICT)'] === 'Negative (-ve)'}
+                                    onChange={(e) => handleResultChange(test.id, 'DENGUE NS1 (ICT)', e.target.value)}
+                                    className="radio radio-primary radio-sm mr-2"
+                                  />
+                                  <span className="text-sm">Negative (-ve)</span>
+                                </label>
+                                <label className="flex items-center cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    name={`dengue-${test.id}`}
+                                    value="Positive (+ve)"
+                                    checked={testResults[test.id]?.['DENGUE NS1 (ICT)'] === 'Positive (+ve)'}
+                                    onChange={(e) => handleResultChange(test.id, 'DENGUE NS1 (ICT)', e.target.value)}
+                                    className="radio radio-primary radio-sm mr-2"
+                                  />
+                                  <span className="text-sm">Positive (+ve)</span>
+                                </label>
+                              </div>
+                            </div>
                           ) : (
                             /* Other Tests - Single Row */
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -499,7 +535,7 @@ const LabForm = () => {
 
         {/* Developer Credits */}
         <div className="mt-12 text-center border-t pt-8">
-          <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-6 max-w-2xl mx-auto">
+          <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-6 max-w-2xl mx-auto shadow-2xl">
             <div className="text-gray-700">
               <p className="text-base mb-3">
                 <span className="font-medium">Developed by:</span> 
